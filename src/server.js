@@ -6,9 +6,44 @@ const fs = require("fs");
 const loadBooks = () => {
   try {
     const data = fs.readFileSync("books.json", "utf8");
-    return JSON.parse(data);
+    const booksData = JSON.parse(data);
+    if (booksData.length === 0) {
+      const defaultBook = {
+        id: "1",
+        name: "Sample Book",
+        year: 2023,
+        author: "Sample Author",
+        summary: "A sample book summary.",
+        publisher: "Sample Publisher",
+        pageCount: 200,
+        readPage: 0,
+        finished: false,
+        reading: false,
+        insertedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      booksData.push(defaultBook);
+      saveBooks(booksData);
+    }
+    return booksData;
   } catch (error) {
-    return [];
+    const defaultBook = {
+      id: "1",
+      name: "Sample Book",
+      year: 2023,
+      author: "Sample Author",
+      summary: "A sample book summary.",
+      publisher: "Sample Publisher",
+      pageCount: 200,
+      readPage: 0,
+      finished: false,
+      reading: false,
+      insertedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const booksData = [defaultBook];
+    saveBooks(booksData);
+    return booksData;
   }
 };
 
@@ -43,7 +78,7 @@ const server = http.createServer((req, res) => {
   }
 
   if (url === "/books" || url === "/books/") {
-    console.log(`Received ${method} request to ${url}`); // Log untuk debugging
+    console.log(`Received ${method} request to ${url}`);
     if (method === "GET") {
       const query = new URLSearchParams(url.split("?")[1] || "");
       let filteredBooks = [...books];
@@ -86,7 +121,7 @@ const server = http.createServer((req, res) => {
         body += chunk;
       });
       req.on("end", () => {
-        console.log("Received body:", body); // Log body mentah untuk debugging
+        console.log("Received body:", body);
         if (!body) {
           res.statusCode = 400;
           res.end(
@@ -102,7 +137,18 @@ const server = http.createServer((req, res) => {
         try {
           const parsedBody = JSON.parse(body);
 
-          // Validasi semua properti yang diperlukan
+          if ("id" in parsedBody) {
+            res.statusCode = 400;
+            res.end(
+              JSON.stringify({
+                status: "fail",
+                message:
+                  'Gagal menambahkan buku. Properti "id" tidak diizinkan, akan dibuat otomatis oleh server',
+              })
+            );
+            return;
+          }
+
           const requiredFields = [
             "name",
             "year",
@@ -140,14 +186,12 @@ const server = http.createServer((req, res) => {
             reading,
           } = parsedBody;
 
-          // Validasi tipe data
           if (typeof name !== "string" || name.trim() === "") {
             res.statusCode = 400;
             res.end(
               JSON.stringify({
                 status: "fail",
-                message:
-                  "Gagal menambahkan buku. Mohon isi nama buku dengan string yang valid",
+                message: "Gagal menambahkan buku. Mohon isi nama buku",
               })
             );
             return;
@@ -228,7 +272,6 @@ const server = http.createServer((req, res) => {
             return;
           }
 
-          // Validasi logika
           if (readPage > pageCount) {
             res.statusCode = 400;
             res.end(
@@ -272,7 +315,12 @@ const server = http.createServer((req, res) => {
             })
           );
         } catch (error) {
-          console.error("Error parsing body:", error.message); // Log error untuk debugging
+          console.error(
+            "Error parsing body:",
+            error.message,
+            "Raw body:",
+            body
+          );
           res.statusCode = 400;
           res.end(
             JSON.stringify({
@@ -319,7 +367,7 @@ const server = http.createServer((req, res) => {
         body += chunk;
       });
       req.on("end", () => {
-        console.log("Received body for PUT:", body); // Log body untuk debugging
+        console.log("Received body for PUT:", body);
         if (!body) {
           res.statusCode = 400;
           res.end(
@@ -346,7 +394,6 @@ const server = http.createServer((req, res) => {
 
           const parsedBody = JSON.parse(body);
 
-          // Validasi semua properti yang diperlukan
           const requiredFields = [
             "name",
             "year",
@@ -384,14 +431,12 @@ const server = http.createServer((req, res) => {
             reading,
           } = parsedBody;
 
-          // Validasi tipe data
           if (typeof name !== "string" || name.trim() === "") {
             res.statusCode = 400;
             res.end(
               JSON.stringify({
                 status: "fail",
-                message:
-                  "Gagal memperbarui buku. Mohon isi nama buku dengan string yang valid",
+                message: "Gagal memperbarui buku. Mohon isi nama buku",
               })
             );
             return;
@@ -505,7 +550,12 @@ const server = http.createServer((req, res) => {
             })
           );
         } catch (error) {
-          console.error("Error parsing body for PUT:", error.message);
+          console.error(
+            "Error parsing body for PUT:",
+            error.message,
+            "Raw body:",
+            body
+          );
           res.statusCode = 400;
           res.end(
             JSON.stringify({
